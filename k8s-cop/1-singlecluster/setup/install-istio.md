@@ -14,9 +14,9 @@ export GATEWAY_IP=$(kubectl get svc -n istio-system istio-ingressgateway -o json
 export INGRESS_PORT=80
 export SECURE_INGRESS_PORT=443
 
-curl -H "Host: hellocloud.io" http://$GATEWAY_IP:$INGRESS_PORT
-curl -H "Host: hellocloud.io" http://172.18.255.150
-for _ in {1..100}; do curl -I -H "Host: hellocloud.io" http://172.18.255.150; sleep 0.1; done
+curl -H "Host: hashisai.io" http://$GATEWAY_IP:$INGRESS_PORT
+curl -H "Host: hashisai.io" http://172.18.255.150
+for _ in {1..100}; do curl -I -H "Host: hashisai.io" http://172.18.255.150; sleep 0.1; done
 
 # istioctl pc listener deployment.apps/istiod -n istio-system
 

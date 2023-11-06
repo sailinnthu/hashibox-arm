@@ -4,7 +4,7 @@ metadata:
   name: web-api-gw-vs
 spec:
   hosts:
-  - "hellocloud.io"
+  - "hashisai.io"
   gateways:
   - web-api-gateway
   http:
