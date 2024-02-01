@@ -1,15 +1,21 @@
+```
 cd /home/vagrant/vault-cop/2-vault-with-tls-on-k8s
+```
 
+```
 export WORKDIR=/home/vagrant/vault-cop/2-vault-with-tls-on-k8s
 export VAULT_K8S_NAMESPACE="vault"
 export VAULT_HELM_RELEASE_NAME="vault"
 export VAULT_SERVICE_NAME="vault-internal"
 export K8S_CLUSTER_NAME="cluster.local"
-
-# generate private key
+```
+### generate private key
+```
 openssl genrsa -out ${WORKDIR}/vault.key 2048
+```
 
-# create CSR
+### create CSR
+```
 cat > ${WORKDIR}/vault-csr.conf <<EOF
 [req]
 default_bits = 2048
@@ -32,15 +38,21 @@ DNS.2 = *.${VAULT_SERVICE_NAME}.${VAULT_K8S_NAMESPACE}.svc.${K8S_CLUSTER_NAME}
 DNS.3 = *.${VAULT_K8S_NAMESPACE}
 IP.1 = 127.0.0.1
 EOF
+```
 
-# generate CSR - vault.csr will out
+### generate CSR - vault.csr will out
+```
 openssl req -new -key ${WORKDIR}/vault.key -out ${WORKDIR}/vault.csr -config ${WORKDIR}/vault-csr.conf
+```
 
-# verify
+### verify
+```
 openssl req --noout --text --in vault.csr
+```
 
-# Issue the Certificate
-# create csr yaml file to send it to k8s (aka) creating k8s CSR resource
+## Issue the Certificate
+### create csr yaml file to send it to k8s (aka) creating k8s CSR resource
+```
 cat > ${WORKDIR}/csr.yaml <<EOF
 apiVersion: certificates.k8s.io/v1
 kind: CertificateSigningRequest
@@ -55,56 +67,78 @@ spec:
   - key encipherment
   - server auth
 EOF
+```
 
 
-# send the CSR to k8s
+### send the CSR to k8s
+```
 kubectl create -f ${WORKDIR}/csr.yaml
 
 kubectl get csr
+```
 
-# approve the CSR `vault.svc` in k8s
+### approve the CSR `vault.svc` in k8s
+```
 kubectl certificate approve vault.svc
+```
 
-# confirm the certificate was issued
+### confirm the certificate was issued
+```
 kubectl get csr vault.svc
+```
 
-# retrieve the vault.crt certificate
+### retrieve the vault.crt certificate
+```
 kubectl get csr vault.svc -o jsonpath='{.status.certificate}' | openssl base64 -d -A -out ${WORKDIR}/vault.crt
+```
 
-# verify
+### verify
+```
 openssl x509 --text -noout --in vault.crt
+```
 
-# retrieve k8s CA
+### retrieve k8s CA
+```
 kubectl config view \
 --raw \
 --minify \
 --flatten \
 -o jsonpath='{.clusters[].cluster.certificate-authority-data}' \
 | base64 -d > ${WORKDIR}/vault.ca
+```
 
-# verify
+### verify
+```
 openssl verify -CAfile vault.ca vault.crt
+```
 
-# create namespace for vault
+### create namespace for vault
+```
 kubectl create namespace $VAULT_K8S_NAMESPACE
+```
 
-# Note: `kubectl create` (not `kubectl apply`) the TLS secret
-# `generic`
+## Note: `kubectl create` (not `kubectl apply`) the TLS secret
+### `generic`
+```
 kubectl create secret generic vault-ha-tls \
    -n $VAULT_K8S_NAMESPACE \
    --from-file=vault.key=${WORKDIR}/vault.key \
    --from-file=vault.crt=${WORKDIR}/vault.crt \
    --from-file=vault.ca=${WORKDIR}/vault.ca
+```
 
-# `tls` - we cannot when we have `root CA`
-# kubetl create secret tls --help, available `--cert`, `--key`
+### `tls` - we cannot when we have `root CA`
+### kubetl create secret tls --help, available `--cert`, `--key`
+```
 kubectl create secret tls vault-ha-tls \
    -n $VAULT_K8S_NAMESPACE \
    --from-file=vault.key=${WORKDIR}/vault.key \
    --from-file=vault.crt=${WORKDIR}/vault.crt \
    --from-file=vault.ca=${WORKDIR}/vault.ca
+```
 
-# create the overrides.yaml file
+### create the overrides.yaml file
+```
 cat > ${WORKDIR}/overrides.yaml <<EOF
 global:
    enabled: true
@@ -150,13 +184,17 @@ server:
             disable_mlock = true
             service_registration "kubernetes" {}
 EOF
+```
 
-
-# deploy the cluster
+### deploy the cluster
+```
 helm install -n $VAULT_K8S_NAMESPACE $VAULT_HELM_RELEASE_NAME hashicorp/vault -f ${WORKDIR}/overrides.yaml
-
-# upgrade helm chart (in case you need it)
+```
+```
+### upgrade helm chart (in case you need it)
 helm upgrade -n $VAULT_K8S_NAMESPACE $VAULT_HELM_RELEASE_NAME hashicorp/vault -f ${WORKDIR}/overrides.yaml
+```
 
-# Notes on `-client auth` not required in K8s CSR resource
-extendedKeyUsage says how the certificate can be used. clientAuth means it can be used to authenticate a client, i.e. authentication by client certificate when doing mutual authentication serverAuth means it can be used to authenticate a server, which is the normal case when doing TLS.
+### Notes on `-client auth` not required in K8s CSR resource
+* extendedKeyUsage says how the certificate can be used. 
+* clientAuth means it can be used to authenticate a client, i.e. authentication by client certificate when doing mutual authentication serverAuth means it can be used to authenticate a server, which is the normal case when doing TLS.
