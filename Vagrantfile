@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
       config.ssh.password = "vagrant"
       vm1.vm.hostname = "hashibox-arm"
       # vm1.vm.box = "bento/ubuntu-22.04"
-      vm1.vm.box = "bento/ubuntu-22.04-arm64"
+      vm1.vm.box = "bento/ubuntu-22.04" # bento/ubuntu-22.04-arm64
       vm1.vm.network "private_network", ip: "192.168.56.85"
       # vm1.vm.network "forwarded_port", guest: 8200, host: 8200
       vm1.vm.synced_folder ".", "/home/vagrant/"
